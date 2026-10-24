@@ -2,10 +2,27 @@
 
 Company equipment register, staff loans, and decentralized annual inventory checks. Built with Next.js, Supabase Auth/Postgres, QR labels and optional Web NFC. The interface follows the supplied inventory dashboard reference.
 
+## Current deployment
+
+- Staff workspace: https://mcf-equipment-booking.vercel.app/
+- Super admin login: https://mcf-equipment-booking.vercel.app/admin
+- Root account: `huatchaisg@gmail.com` (created, approved, and verified against Supabase Auth).
+- Database: the Supabase Free resource `mcf-equipment-inventory` in Singapore, connected through Vercel Marketplace.
+
+The initial root password was randomly generated and saved in the Vercel project's private environment settings as `ROOT_ADMIN_INITIAL_PASSWORD` (Config, so the account owner can reveal it). It is never referenced by client code and has no `NEXT_PUBLIC_` prefix. Reveal it in Vercel project Settings → Environment Variables, sign in, and use **Change password**. Delete the initial-password environment entry after changing it; the app does not depend on that entry.
+
+Super admins create approved staff accounts from **Staff access → Create staff account**, choosing a temporary password and department. Passwords travel over HTTPS to a server route that validates the caller's Supabase session and admin role. Share temporary passwords through your company's secure channel; staff can change them after signing in. Public self-registration is not offered in the UI.
+
+Email confirmation and recovery require additional Supabase configuration: the Auth Site URL currently defaults to localhost, and the built-in email provider did not send the root recovery email. Before relying on **Forgot password**, set the deployed Site URL and reset-password redirect allowlist, and configure an authorized mail provider in Supabase. Current email/password sign-in and authenticated password changes work independently of email delivery.
+
+The schema was installed with verified TLS using Supabase's official CA certificates. `supabase/prod-ca-2021.crt` and `prod-ca-2025.crt` came from the official `supabase/cli` repository, commit `466485003e9fc4a3c15bf80b5369fddba65c2846`, under `apps/cli-go/internal/gen/types/templates/`. The one-time `scripts/provision-cloud.mjs` script is opt-in (`ASSETTRACK_SETUP_TOKEN` must be present); this marker was removed after setup. Normal builds do not run database initialization.
+
+Validated: production build; SQL permission/lifecycle tests; connected browser workflow against the real Supabase database for root login, administrator-created staff, staff login, equipment add/book-out/stocktake confirmation/book-in, shared persistence, and mobile layout. Temporary test records were removed. Physical QR camera and NFC hardware remain device checks.
+
 ## What works
 
 - Search and filter laptops, projectors/cameras, printers, radios and storage devices.
-- Staff sign-in, self-service book-out with a due date, and book-in with condition reporting.
+- Administrator-provisioned staff sign-in, self-service book-out with a due date, and book-in with condition reporting.
 - A dedicated `/admin` sign-in route. Admins add equipment, mark missing/maintenance items, and retire replaced equipment without deleting history.
 - Annual stocktake campaigns: custodians account for their own items; admins can account for any item.
 - Downloadable QR labels, camera QR scanning, manual tag entry, and reading NFC URL/text records on compatible Android Chrome devices. Write the asset URL to physical NFC tags with a phone NFC writer; iPhones can open URL tags through the operating system.
@@ -50,7 +67,7 @@ unset SUPABASE_SERVICE_ROLE_KEY ROOT_ADMIN_PASSWORD
 
 The script creates the root user and assigns its admin role. Passwords are handled by Supabase Auth; no default password is embedded in the application. If an account with that email already exists, the script stops rather than changing its password or privileges. For an existing verified account, the project owner can assign `role='admin', approved=true` in the Supabase `profiles` table using the dashboard. Do not expose service-role credentials to the application to support routine logins.
 
-The root login address is `/admin`. Staff use `/`. Use **Forgot password?** and the email recovery link to set a new password. Set up Supabase's email provider and Auth redirect allowlist before relying on confirmation/recovery emails. New public signups receive only the staff role and remain blocked from company data until approved in the admin Staff access tab. Administrators can assign departments or suspend staff access there. For an internal-only rollout, disable public signup in Supabase Authentication settings and provision/invite staff using the dashboard.
+The root login address is `/admin`. Staff use `/`. Use **Forgot password?** and the email recovery link to set a new password. Set up Supabase's email provider and Auth redirect allowlist before relying on confirmation/recovery emails. If accounts are created outside the app, they receive only the staff role and remain blocked from company data until approved in the admin Staff access tab. Administrators can assign departments or suspend staff access there. For an internal-only rollout, disable public signup in Supabase Authentication settings and provision/invite staff using the dashboard.
 
 ## Deploy to Vercel
 
